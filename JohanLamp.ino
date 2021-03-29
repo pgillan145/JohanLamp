@@ -15,7 +15,9 @@
 */
 
 #include <FastLED.h>
-#include "ArduinoLowPower.h"
+//#include "ArduinoLowPower.h"
+#include <PGardLib.h>
+#include <RFClickerLib.h>
 
 #define OTA
 #undef SER              /* Serial slows things down; don't leave it on. */
@@ -149,7 +151,7 @@ const uint32_t colors[MODES][11] = {{
 };
 
 const uint8_t NCOLORS = (sizeof(colors[0]) / sizeof(colors[0][0]));
-int mode = DEFAULT_MODE;
+volatile int mode = DEFAULT_MODE;
 
 uint8_t pix[rows][cols];
 CRGB matrix[MAT_H * PANELS_H * MAT_W * PANELS_W];
@@ -223,6 +225,15 @@ uint16_t pos(uint16_t col, uint16_t row) {
   return MAT_W * MAT_H * pindex + _pos(col % MAT_W, row % MAT_H);
 }
 #endif
+
+void updateMenu() {
+  switch(mode) {
+    case 0:
+      writeMenu("RED|GREED|BLUE|WHITE");
+      break;
+  }
+}
+
 
 void brightness() {
   if (digitalRead(ROT_PIN1) == digitalRead(ROT_PIN2)) {
@@ -388,6 +399,8 @@ void setup() {
   Serial.begin(9600); while (!Serial);
   Serial.println("setup()");
 #endif
+  PGardLibSetup(9600);
+  RFClickerLibSetup("Johan", RFClickerButtonClick);
 
   FastLED.addLeds<MAT_TYPE, MAT_PIN>(matrix, MAT_W * MAT_H);
   FastLED.setBrightness(bright);
@@ -458,6 +471,7 @@ void setup() {
 int last_button = 0;
 
 void loop() {
+  BLE.poll();
 #ifdef OTA  
   // check for WiFi OTA updates
   ArduinoOTA.poll();
@@ -490,6 +504,23 @@ void loop() {
 #endif
 */  
     // Just go to sleep for 5 seconds at a clip until brightness goes back up. 
-    LowPower.sleep(5000);
+    //LowPower.sleep(5000);
+  }
+}
+
+void RFClickerButtonClick(BLEDevice central, BLECharacteristic characteristic) {
+  byte ble_buttons = (characteristic.value())[0];
+
+  if (TSTBUTTON(ble_buttons, BUTTON1)) {
+    mode = 0;
+  }
+  if (TSTBUTTON(ble_buttons, BUTTON2)) {
+    mode = 1;
+  }
+  if (TSTBUTTON(ble_buttons, BUTTON3)) {
+    mode = 2;
+  }
+  if (TSTBUTTON(ble_buttons, BUTTON4)) {
+    mode = 3;
   }
 }
